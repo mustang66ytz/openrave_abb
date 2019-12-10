@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Robot name="ur10_robotiq_85_gripper">
+  
+  <!-- Include the robots -->
+  <Robot file="ur10e.dae"></Robot>
+  <Kinbody file="robotiq_85_gripper.robot.xml">
+    <rotationaxis>0 1 0 90</rotationaxis>
+  </Kinbody>
+  
+  <!-- Attach the gripper to the robot -->
+  <Kinbody>
+    <body name="robotiq_coupler">
+      <offsetfrom>ee_link</offsetfrom>
+    </body>
+    <joint name="joint_ur10_robotiq" type="hinge" enable="false">
+      <body>ee_link</body>
+      <body>robotiq_coupler</body>
+      <limits>0 0</limits>
+    </joint>
+  </Kinbody>
+  
+  <!-- Define the manipulator -->
+  <Manipulator name="gripper">
+    <base>base_link</base>
+    <effector>robotiq_coupler</effector>
+    <translation>0 0 0.144</translation>
+    <joints>robotiq_85_left_knuckle_joint</joints>
+    <closingdirection>1 1 1 0</closingdirection>
+    <direction>0 1 0</direction>
+  </Manipulator>
+  
+  <!-- This one if for backwards compatibility -->
+  <Manipulator name="ur10_robotiq_85_gripper">
+    <base>base_link</base>
+    <effector>robotiq_coupler</effector>
+    <translation>0 0 0.144</translation>
+    <joints>robotiq_85_left_knuckle_joint</joints>
+    <closingdirection>1 1 1 0</closingdirection>
+    <direction>0 1 0</direction>
+  </Manipulator>
+</Robot>
