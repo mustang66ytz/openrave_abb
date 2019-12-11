@@ -137,28 +137,30 @@ class PickPlace(object):
   			raw_input('Press Enter for next differential IK step')
 
 	def callback(self, data):
-		self.flag = 1
-		for item in data.position:
-			self.initConfig.append(item)
-		return
+		if len(self.initConfig) == 0:
+			print "getting the current joint states"
+			for item in data.position:
+				self.initConfig.append(item)
 
 	def get_current_joint_states(self):
-		rospy.Rate(1)
+		r = rospy.Rate(10)
 		# this function subscribe to the topic /joint_states and update the self.init_config with the current value
-		sub_once = rospy.Subscriber("/joint_states", JointState, self.callback)
-		if self.flag == 1:
-			return
-		try:
-			rospy.spin()
-		except KeyboardInterrupt:
-			print "shutting down"
+		
+		count = 0
+		while count<10:
+			sub_once = rospy.Subscriber("/joint_states", JointState, self.callback)
+			#rospy.spin()
+			count = count + 1
+			r.sleep()
+		sub_once.unregister()
+		
 
 	def motion_plan(self):
 		planner = orpy.RaveCreatePlanner(self.env, 'birrt')
 		params = orpy.Planner.PlannerParameters()
 		params.SetRobotActiveJoints(self.robot)
-		#self.get_current_joint_states()
-		#params.SetInitialConfig(self.initConfig)
+		self.get_current_joint_states()
+		params.SetInitialConfig(self.initConfig)
 		params.SetGoalConfig(self.solutions[0])
 		params.SetPostProcessing('ParabolicSmoother', '<_nmaxiterations>40</_nmaxiterations>')
 		planner.InitPlan(self.robot, params)
