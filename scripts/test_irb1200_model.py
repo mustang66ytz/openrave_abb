@@ -4,8 +4,12 @@ import time
 import numpy as np
 import tf.transformations as tr
 import rospy
+import roslib
+import actionlib
+
+from control_msgs.msg import JointTrajectoryAction, JointTrajectoryGoal, FollowJointTrajectoryAction, FollowJointTrajectoryGoal
 from geometry_msgs.msg import (Point, Quaternion, Pose, Vector3, Transform, Wrench)
-from sensor_msgs.msg import CameraInfo, Image, RegionOfInterest
+from sensor_msgs.msg import CameraInfo, Image, RegionOfInterest, JointState
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
 def ros_trajectory_from_openrave(robot_name, traj):
@@ -51,6 +55,7 @@ def ros_trajectory_from_openrave(robot_name, traj):
     time_from_start += deltatime
     ros_point.time_from_start = rospy.Duration(time_from_start)
     ros_traj.points.append(ros_point)
+    ros_traj.joint_names = ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"]
   return ros_traj
 
 class PickPlace(object):
@@ -68,6 +73,8 @@ class PickPlace(object):
 		self.box = orpy.RaveCreateKinBody(self.env, '')
 		self.box_centroid = []
 		self.solutions = []
+		self.flag = 0
+		self.initConfig = []
 
 	def get_links(self):
 		print self.links
@@ -129,10 +136,29 @@ class PickPlace(object):
   			self.robot.SetActiveDOFValues(q)
   			raw_input('Press Enter for next differential IK step')
 
+	def callback(self, data):
+		self.flag = 1
+		for item in data.position:
+			self.initConfig.append(item)
+		return
+
+	def get_current_joint_states(self):
+		rospy.Rate(1)
+		# this function subscribe to the topic /joint_states and update the self.init_config with the current value
+		sub_once = rospy.Subscriber("/joint_states", JointState, self.callback)
+		if self.flag == 1:
+			return
+		try:
+			rospy.spin()
+		except KeyboardInterrupt:
+			print "shutting down"
+
 	def motion_plan(self):
 		planner = orpy.RaveCreatePlanner(self.env, 'birrt')
 		params = orpy.Planner.PlannerParameters()
 		params.SetRobotActiveJoints(self.robot)
+		#self.get_current_joint_states()
+		#params.SetInitialConfig(self.initConfig)
 		params.SetGoalConfig(self.solutions[0])
 		params.SetPostProcessing('ParabolicSmoother', '<_nmaxiterations>40</_nmaxiterations>')
 		planner.InitPlan(self.robot, params)
@@ -152,10 +178,15 @@ class PickPlace(object):
 		ros_traj = ros_trajectory_from_openrave(self.robot.GetName(), traj)
 		print "trajectory in ros format is:"
 		print ros_traj
+		return ros_traj
 
 
 if __name__ == "__main__":
 	print "running openrave in ros"
+	rospy.init_node("openrave_planning_client")
+        client = actionlib.SimpleActionClient('/joint_trajectory_action', FollowJointTrajectoryAction)
+        client.wait_for_server()
+	print "the jointTrajectoryAction server is connected"
 	scene = PickPlace()
 	scene.set_env()
 	scene.ik_calculation()
@@ -167,6 +198,14 @@ if __name__ == "__main__":
 	#print "translation jacobian: ", jacobian[0]
 	#print "angular jacobian: ", jacobian[1]
 	raw_input("Press enter to execute motion planning")
-	scene.motion_plan()	
+	res_traj = scene.motion_plan()
+        goal = FollowJointTrajectoryGoal()
+	goal.trajectory = res_traj
+	
+	goal.trajectory.header.stamp = rospy.Time.now()
+	client.send_goal(goal)
+	client.wait_for_result()
+
+
 	raw_input("Press any key to exit")
 

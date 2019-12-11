@@ -8,8 +8,10 @@ project(openrave_abb)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  actionlib
   openrave_catkin
   roscpp
+  control_msgs
   rospy
 )
 
@@ -92,6 +94,7 @@ find_package(catkin REQUIRED COMPONENTS
 #   cfg/DynReconf1.cfg
 #   cfg/DynReconf2.cfg
 # )
+catkin_python_setup()
 
 ###################################
 ## catkin specific configuration ##
