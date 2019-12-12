@@ -76,6 +76,8 @@ class PickPlace(object):
 		self.solutions = []
 		self.flag = 0
 		self.initConfig = []
+		#self.homeConfig = [-0.24686013, 0.14485835, 0.04176305, 1.52407427, 1.8132833, 1.37848124]
+		self.homeConfig = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
 	def get_links(self):
 		print self.links
@@ -83,7 +85,7 @@ class PickPlace(object):
 	def set_env(self):
 		with self.env:
 			self.box.SetName('box')
-			self.box.InitFromBoxes(np.array([[0.5, 0.3, 1, 0.01, 0.04, 0.22]]), True)
+			self.box.InitFromBoxes(np.array([[0.5, 0.1, 1.2, 0.01, 0.04, 0.22]]), True)
 			self.env.AddKinBody(self.box)
 		self.box_centroid = self.box.ComputeAABB().pos()
 		print self.box_centroid
@@ -138,8 +140,8 @@ class PickPlace(object):
   			raw_input('Press Enter for next differential IK step')
 
 	def callback(self, data):
-		if len(self.initConfig) == 0:
-			print "getting the current joint states"
+		if len(self.initConfig) == 0 or (data.position != self.initConfig):
+			self.initConfig = []
 			for item in data.position:
 				self.initConfig.append(item)
 
@@ -150,23 +152,30 @@ class PickPlace(object):
 		count = 0
 		while count<10:
 			sub_once = rospy.Subscriber("/joint_states", JointState, self.callback)
-			#rospy.spin()
 			count = count + 1
 			r.sleep()
 		sub_once.unregister()
-		
 
-	def motion_plan(self):
+	def motion_plan(self, targetConfig = []):
 		planner = orpy.RaveCreatePlanner(self.env, 'birrt')
 		params = orpy.Planner.PlannerParameters()
 		params.SetRobotActiveJoints(self.robot)
 		self.get_current_joint_states()
 		params.SetInitialConfig(self.initConfig)
-		raw_input("Press enter to bring robot home")
 		self.robot.SetActiveDOFValues(self.initConfig)
-		sol_num = raw_input("Please enter the solution number that you want to execute")
-		sol_num = int(sol_num)-1
-		params.SetGoalConfig(self.solutions[sol_num])
+		self.initConfig = []
+
+		if len(targetConfig)>0:
+			print "going home"
+			print targetConfig
+			params.SetGoalConfig(targetConfig)
+		else:
+			sol_num = raw_input("Please enter the solution number that you want to execute")
+			sol_num = int(sol_num)-1
+			print "planning to goal"
+			print self.solutions[sol_num]
+			params.SetGoalConfig(self.solutions[sol_num])
+
 		params.SetPostProcessing('ParabolicSmoother', '<_nmaxiterations>40</_nmaxiterations>')
 		planner.InitPlan(self.robot, params)
 		# Plan a trajectory
@@ -207,6 +216,14 @@ class PickPlace(object):
 			raw_input("Press enter to visualize the plan in openrave")
 			controller.SetPath(traj)
 
+	def planning_execution(self, targetConfig = []):
+		res_traj = self.motion_plan(targetConfig)
+		raw_input("Press enter to move the robot! Be careful!")
+        	goal = FollowJointTrajectoryGoal()
+		goal.trajectory = res_traj
+		goal.trajectory.header.stamp = rospy.Time.now()
+		client.send_goal(goal)
+		client.wait_for_result()
 
 if __name__ == "__main__":
 	print "running openrave in ros"
@@ -225,14 +242,9 @@ if __name__ == "__main__":
 	#print "translation jacobian: ", jacobian[0]
 	#print "angular jacobian: ", jacobian[1]
 	scene.visualize_motions()
-	res_traj = scene.motion_plan()	
-	raw_input("Press enter to move the robot! Be careful!")
-        goal = FollowJointTrajectoryGoal()
-	goal.trajectory = res_traj
-	goal.trajectory.header.stamp = rospy.Time.now()
-	client.send_goal(goal)
-	client.wait_for_result()
-
+	print scene.homeConfig
+	scene.planning_execution()
+	scene.planning_execution(scene.homeConfig)
 
 	raw_input("Press any key to exit")
 
