@@ -52,6 +52,7 @@ def ros_trajectory_from_openrave(robot_name, traj):
     ros_point = JointTrajectoryPoint()
     ros_point.positions = waypoint[values_group.offset:values_group.offset+values_group.dof]
     ros_point.velocities = waypoint[velocities_group.offset:velocities_group.offset+velocities_group.dof]
+    print "velocities are: ", ros_point.velocities
     time_from_start += deltatime
     ros_point.time_from_start = rospy.Duration(time_from_start)
     ros_traj.points.append(ros_point)
@@ -183,8 +184,7 @@ class PickPlace(object):
 			qvect[i,:] = spec.ExtractJointValues(trajdata, self.robot, self.manipulator.GetArmIndices(), 0)
 		print qvect
 		ros_traj = ros_trajectory_from_openrave(self.robot.GetName(), traj)
-		print "trajectory in ros format is:"
-		print ros_traj
+		#print ros_traj
 		return ros_traj
 
 	def visualize_motions(self):

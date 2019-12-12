@@ -2,7 +2,7 @@
 <Robot name="irb1200_robotiq_85_gripper">
   
   <!-- Include the robots -->
-  <Robot file="irb1200_5_90.dae"></Robot>
+  <Robot file="irb1200_5_90_lowspeed.dae"></Robot>
   <Kinbody file="robotiq_85_gripper.robot.xml">
     <rotationaxis>0 1 0 90</rotationaxis>
   </Kinbody>
