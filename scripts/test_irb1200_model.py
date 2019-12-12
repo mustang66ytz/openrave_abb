@@ -161,13 +161,18 @@ class PickPlace(object):
 		params.SetRobotActiveJoints(self.robot)
 		self.get_current_joint_states()
 		params.SetInitialConfig(self.initConfig)
-		params.SetGoalConfig(self.solutions[0])
+		raw_input("Press enter to bring robot home")
+		self.robot.SetActiveDOFValues(self.initConfig)
+		sol_num = raw_input("Please enter the solution number that you want to execute")
+		sol_num = int(sol_num)-1
+		params.SetGoalConfig(self.solutions[sol_num])
 		params.SetPostProcessing('ParabolicSmoother', '<_nmaxiterations>40</_nmaxiterations>')
 		planner.InitPlan(self.robot, params)
 		# Plan a trajectory
 		traj = orpy.RaveCreateTrajectory(self.env, '')
 		planner.PlanPath(traj)
 		controller = self.robot.GetController()
+		raw_input("Press enter to visualize the plan in openrave")
 		controller.SetPath(traj)
 		# print the sequence of joint angles
 		times = np.arange(0, traj.GetDuration(), 0.01)
@@ -181,6 +186,26 @@ class PickPlace(object):
 		print "trajectory in ros format is:"
 		print ros_traj
 		return ros_traj
+
+	def visualize_motions(self):
+		planner = orpy.RaveCreatePlanner(self.env, 'birrt')
+		params = orpy.Planner.PlannerParameters()
+		params.SetRobotActiveJoints(self.robot)
+		
+		for i in range(len(self.solutions)):
+			print "Visualizing the ", i, " solution"
+			self.get_current_joint_states()
+			raw_input("Press enter to bring robot home")
+			self.robot.SetActiveDOFValues(self.initConfig)
+			params.SetInitialConfig(self.initConfig)
+			params.SetGoalConfig(self.solutions[i-1])
+			params.SetPostProcessing('ParabolicSmoother', '<_nmaxiterations>50</_nmaxiterations>')
+			planner.InitPlan(self.robot, params)
+			traj = orpy.RaveCreateTrajectory(self.env, '')
+			planner.PlanPath(traj)
+			controller = self.robot.GetController()
+			raw_input("Press enter to visualize the plan in openrave")
+			controller.SetPath(traj)
 
 
 if __name__ == "__main__":
@@ -199,11 +224,11 @@ if __name__ == "__main__":
 	#jacobian = scene.calculate_jacobian_translation('robotiq_85_base_link')
 	#print "translation jacobian: ", jacobian[0]
 	#print "angular jacobian: ", jacobian[1]
-	raw_input("Press enter to execute motion planning")
-	res_traj = scene.motion_plan()
+	scene.visualize_motions()
+	res_traj = scene.motion_plan()	
+	raw_input("Press enter to move the robot! Be careful!")
         goal = FollowJointTrajectoryGoal()
 	goal.trajectory = res_traj
-	
 	goal.trajectory.header.stamp = rospy.Time.now()
 	client.send_goal(goal)
 	client.wait_for_result()
