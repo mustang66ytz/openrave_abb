@@ -3,9 +3,6 @@
   
   <!-- Include the robots -->
   <Robot file="irb1200_5_90_lowspeed.dae"></Robot>
-  <Kinbody file="robotiq_85_gripper.robot.xml">
-    <rotationaxis>0 1 0 90</rotationaxis>
-  </Kinbody>
   
   <!-- Attach the gripper to the robot -->
   <Kinbody>
@@ -22,10 +19,10 @@
   <!-- Define the manipulator -->
   <Manipulator name="gripper">
     <base>base_link</base>
-    <effector>robotiq_coupler</effector>
+    <effector>tool0</effector>
     <!--translation>0 0 0.144</translation-->
     <translation>0 0 0</translation>
-    <joints>robotiq_85_left_knuckle_joint</joints>
+    <joints>joint_6-tool0</joints>
     <closingdirection>1 1 1 0</closingdirection>
     <direction>0 1 0</direction>
   </Manipulator>
@@ -33,10 +30,10 @@
   <!-- This one if for backwards compatibility -->
   <Manipulator name="irb1200_robotiq_85_gripper">
     <base>base_link</base>
-    <effector>robotiq_coupler</effector>
+    <effector>tool0</effector>
     <!--translation>0 0 0.144</translation-->
     <translation>0 0 0.0</translation>
-    <joints>robotiq_85_left_knuckle_joint</joints>
+    <joints>joint_6-tool0</joints>
     <closingdirection>1 1 1 0</closingdirection>
     <direction>0 1 0</direction>
   </Manipulator>

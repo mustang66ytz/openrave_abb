@@ -109,12 +109,14 @@ class PickPlace(object):
 		self.solutions = []
 		self.flag = 0
 		self.initConfig = []
-		self.homeConfig = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+		#self.homeConfig = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+		self.homeConfig = [0.0, -0.5, 0.0, 0.0, 0.0, 0.0]
 
 	def env_1(self):
 		env_obj1 = orpy.RaveCreateKinBody(self.env, '')
 		env_obj1.SetName('left_box')
-		env_obj1.InitFromBoxes(np.array([[0.5, 0.2, 0.86, 0.09, 0.09, 0.09], [0.5, -0.3, 0.86, 0.09, 0.09, 0.09], [0.5, 0.2, 1.04, 0.09, 0.09, 0.09], [0.5, -0.3, 1.04, 0.09, 0.09, 0.09]]), True)
+		env_obj1.InitFromBoxes(np.array([[0.6, 0.3, 0.86, 0.1, 0.1, 0.1], [0.6, -0.2, 0.86, 0.1, 0.1, 0.1], [0.6, 0.3, 1.06, 0.1, 0.1, 0.1], [0.6, -0.2, 1.06, 0.1, 0.1, 0.1], [0.6, 0.3, 1.26, 0.1, 0.1, 0.1], [0.6, -0.2, 1.26, 0.1, 0.1, 0.1], [0.61, 0.05, 1.53, 0.11, 0.21, 0.17]]), True)
+
 		return env_obj1
 
 	def get_links(self):
@@ -151,7 +153,7 @@ class PickPlace(object):
 		#Tgrasp = tr.quaternion_matrix([ 0.5,  0.5,  0.5, -0.5])
 		Tgrasp = tr.quaternion_matrix([ 0.0, 1.0, 0.0, 0.0])
 		#Tgrasp[:3,3] = self.box_centroid + np.array([0.1, 0, 0.06])
-		Tgrasp[:3, 3] = np.array([0.5, 0, 0.8])
+		Tgrasp[:3, 3] = np.array([0.6, 0, 0.9])
 		self.solutions = self.manipulator.FindIKSolutions(Tgrasp, orpy.IkFilterOptions.CheckEnvCollisions)
 
 		print self.solutions
@@ -282,7 +284,7 @@ if __name__ == "__main__":
 	#jacobian = scene.calculate_jacobian_translation('robotiq_85_base_link')
 	#print "translation jacobian: ", jacobian[0]
 	#print "angular jacobian: ", jacobian[1]
-	#scene.visualize_motions()
+	scene.visualize_motions()
 	print scene.homeConfig
 	scene.planning_execution()
 	scene.planning_execution(scene.homeConfig)
