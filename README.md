@@ -1,3 +1,6 @@
+## Obstacle avoiding motion planning real-time performance
+Demo video is here: (https://youtu.be/-srb1WkSmKg)
+
 ## Instructions on how to connect to the robot
 ### From the PC side:
 Add 
