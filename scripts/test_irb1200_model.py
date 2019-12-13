@@ -6,6 +6,7 @@ import tf.transformations as tr
 import rospy
 import roslib
 import actionlib
+import math
 
 from control_msgs.msg import JointTrajectoryAction, JointTrajectoryGoal, FollowJointTrajectoryAction, FollowJointTrajectoryGoal
 from geometry_msgs.msg import (Point, Quaternion, Pose, Vector3, Transform, Wrench)
@@ -59,13 +60,45 @@ def ros_trajectory_from_openrave(robot_name, traj):
     ros_traj.joint_names = ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"]
   return ros_traj
 
+def build_rotation(axis, angle):
+    rotation = None
+    if axis == 'x':
+        rotation = np.matrix([[1, 0, 0, 0],
+                             [0, math.cos(-angle), math.sin(-angle), 0],
+                             [0, -math.sin(-angle), math.cos(-angle), 0],
+                             [0, 0, 0, 1]])
+    if axis == 'y':
+        rotation = np.matrix(
+            [[math.cos(-angle), 0, -math.sin(-angle), 0],
+             [0, 1, 0, 0],
+             [math.sin(-angle), 0, math.cos(-angle), 0],
+             [0, 0, 0, 1]]
+        )
+    if axis == 'z':
+        rotation = np.matrix(
+            [[math.cos(-angle), math.sin(-angle), 0, 0],
+             [-math.sin(-angle), math.cos(-angle), 0, 0],
+             [0, 0, 1, 0],
+             [0, 0, 0, 1]]
+        )
+    return rotation
+
+# input: 4by4 rotational matrix needed to be rotated, rotational angles about x, y, and z axes
+# output: the rotated 4by4 rotational matrix
+def build_relative_rotation(original, x_rot, y_rot, z_rot):
+    rotatex = build_rotation('x', x_rot)
+    rotatey = build_rotation('y', y_rot)
+    rotatez = build_rotation('z', z_rot)
+    # apply the rotations here
+    return original.dot(rotatex).dot(rotatey).dot(rotatez)
+
 class PickPlace(object):
 
 	def __init__(self):
 		self.env = orpy.Environment()
 		self.env.SetViewer('qtcoin')
 #		self.env.Load('../robots/ur10_robotiq_85_gripper.robot.xml')
-		self.env.Load('../worlds/cubes_irb1200_task.env.xml')
+		self.env.Load('../worlds/boxes_irb1200_task.env.xml')
 		self.env.SetDefaultViewer()
 		self.robot = self.env.GetRobot('robot')
 		self.manipulator = self.robot.SetActiveManipulator('gripper')
@@ -76,19 +109,27 @@ class PickPlace(object):
 		self.solutions = []
 		self.flag = 0
 		self.initConfig = []
-		#self.homeConfig = [-0.24686013, 0.14485835, 0.04176305, 1.52407427, 1.8132833, 1.37848124]
 		self.homeConfig = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+	def env_1(self):
+		env_obj1 = orpy.RaveCreateKinBody(self.env, '')
+		env_obj1.SetName('left_box')
+		env_obj1.InitFromBoxes(np.array([[0.5, 0.2, 0.86, 0.09, 0.09, 0.09], [0.5, -0.3, 0.86, 0.09, 0.09, 0.09], [0.5, 0.2, 1.04, 0.09, 0.09, 0.09], [0.5, -0.3, 1.04, 0.09, 0.09, 0.09]]), True)
+		return env_obj1
 
 	def get_links(self):
 		print self.links
-	
+
 	def set_env(self):
 		with self.env:
 			self.box.SetName('box')
-			self.box.InitFromBoxes(np.array([[0.5, 0.1, 1.2, 0.01, 0.04, 0.22]]), True)
-			self.env.AddKinBody(self.box)
+			self.box.InitFromBoxes(np.array([[0.3, 0.0, 1, 0.01, 0.04, 0.12]]), True)
+			#self.env.AddKinBody(self.box)
+			self.env.AddKinBody(self.env_1())
 		self.box_centroid = self.box.ComputeAABB().pos()
+		self.box_size = self.box.ComputeAABB().extents()
 		print self.box_centroid
+		print self.box_size
 
 	def calculate_jacobian_translation(self, link_name):
 		jacobian = []
@@ -107,10 +148,10 @@ class PickPlace(object):
 			print "ik model loading failed"
   			ikmodel.autogenerate()
 			print "auto generating ik model"
-		Tgrasp = tr.quaternion_matrix([ 0.5,  0.5,  0.5, -0.5])
-		Tgrasp[:3,3] = self.box_centroid
-		print "finding the ik solutions"
-		#self.solutions = self.manipulator.FindIKSolutions(Tgrasp, 0)
+		#Tgrasp = tr.quaternion_matrix([ 0.5,  0.5,  0.5, -0.5])
+		Tgrasp = tr.quaternion_matrix([ 0.0, 1.0, 0.0, 0.0])
+		#Tgrasp[:3,3] = self.box_centroid + np.array([0.1, 0, 0.06])
+		Tgrasp[:3, 3] = np.array([0.5, 0, 0.8])
 		self.solutions = self.manipulator.FindIKSolutions(Tgrasp, orpy.IkFilterOptions.CheckEnvCollisions)
 
 		print self.solutions
@@ -241,7 +282,7 @@ if __name__ == "__main__":
 	#jacobian = scene.calculate_jacobian_translation('robotiq_85_base_link')
 	#print "translation jacobian: ", jacobian[0]
 	#print "angular jacobian: ", jacobian[1]
-	scene.visualize_motions()
+	#scene.visualize_motions()
 	print scene.homeConfig
 	scene.planning_execution()
 	scene.planning_execution(scene.homeConfig)
