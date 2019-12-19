@@ -53,7 +53,7 @@ def ros_trajectory_from_openrave(robot_name, traj):
     ros_point = JointTrajectoryPoint()
     ros_point.positions = waypoint[values_group.offset:values_group.offset+values_group.dof]
     ros_point.velocities = waypoint[velocities_group.offset:velocities_group.offset+velocities_group.dof]
-    print "velocities are: ", ros_point.velocities
+    #print "velocities are: ", ros_point.velocities
     time_from_start += deltatime
     ros_point.time_from_start = rospy.Duration(time_from_start)
     ros_traj.points.append(ros_point)
@@ -92,6 +92,9 @@ def build_relative_rotation(original, x_rot, y_rot, z_rot):
     # apply the rotations here
     return original.dot(rotatex).dot(rotatey).dot(rotatez)
 
+def sortTime(path):
+    return path.points[-1].time_from_start
+
 class PickPlace(object):
 
 	def __init__(self):
@@ -111,6 +114,7 @@ class PickPlace(object):
 		self.initConfig = []
 		#self.homeConfig = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 		self.homeConfig = [0.0, -0.5, 0.0, 0.0, 0.0, 0.0]
+		self.optimalPath = JointTrajectory()
 
 	def env_1(self):
 		env_obj1 = orpy.RaveCreateKinBody(self.env, '')
@@ -213,11 +217,18 @@ class PickPlace(object):
 			print targetConfig
 			params.SetGoalConfig(targetConfig)
 		else:
-			sol_num = raw_input("Please enter the solution number that you want to execute")
-			sol_num = int(sol_num)-1
-			print "planning to goal"
-			print self.solutions[sol_num]
-			params.SetGoalConfig(self.solutions[sol_num])
+			choose = raw_input("Enter 1 to execute the shortest path, and 2 to customize path selection")
+			if choose == "1":
+				return self.optimalPath
+			elif choose == "2":
+				sol_num = raw_input("Please enter the solution number that you want to execute")
+				sol_num = int(sol_num)-1
+				print "planning to goal"
+				print self.solutions[sol_num]
+				params.SetGoalConfig(self.solutions[sol_num])
+			else:
+				print "Invalid input, exiting ..."
+				return
 
 		params.SetPostProcessing('ParabolicSmoother', '<_nmaxiterations>40</_nmaxiterations>')
 		planner.InitPlan(self.robot, params)
@@ -236,18 +247,20 @@ class PickPlace(object):
 			qvect[i,:] = spec.ExtractJointValues(trajdata, self.robot, self.manipulator.GetArmIndices(), 0)
 		print qvect
 		ros_traj = ros_trajectory_from_openrave(self.robot.GetName(), traj)
-		#print ros_traj
+		print "duration of the path is: ", ros_traj.points[-1].time_from_start
 		return ros_traj
 
 	def visualize_motions(self):
 		planner = orpy.RaveCreatePlanner(self.env, 'birrt')
 		params = orpy.Planner.PlannerParameters()
 		params.SetRobotActiveJoints(self.robot)
+		candidate_traj = []
 		
 		for i in range(len(self.solutions)):
 			print "Visualizing the ", i, " solution"
 			self.get_current_joint_states()
-			raw_input("Press enter to bring robot home")
+			time.sleep(1)
+			#raw_input("Press enter to bring robot home")
 			self.robot.SetActiveDOFValues(self.initConfig)
 			params.SetInitialConfig(self.initConfig)
 			params.SetGoalConfig(self.solutions[i-1])
@@ -255,9 +268,16 @@ class PickPlace(object):
 			planner.InitPlan(self.robot, params)
 			traj = orpy.RaveCreateTrajectory(self.env, '')
 			planner.PlanPath(traj)
+			ros_traj = ros_trajectory_from_openrave(self.robot.GetName(), traj)
+			print "duration of the path is: ", ros_traj.points[-1].time_from_start
+			candidate_traj.append(ros_traj)
 			controller = self.robot.GetController()
 			raw_input("Press enter to visualize the plan in openrave")
 			controller.SetPath(traj)
+
+		# sort all the feasible paths according to their durations
+		candidate_traj.sort(key=sortTime)
+		self.optimalPath = candidate_traj[0]
 
 	def planning_execution(self, targetConfig = []):
 		res_traj = self.motion_plan(targetConfig)
