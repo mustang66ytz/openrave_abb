@@ -13,87 +13,91 @@ from geometry_msgs.msg import (Point, Quaternion, Pose, Vector3, Transform, Wren
 from sensor_msgs.msg import CameraInfo, Image, RegionOfInterest, JointState
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
+
 def ros_trajectory_from_openrave(robot_name, traj):
-  """
-  Converts an OpenRAVE trajectory into a ROS JointTrajectory message.
-  @type  robot_name: str
-  @param robot_name: The robot name
-  @type  traj: orpy.Trajectory
-  @param traj: The input OpenRAVE trajectory
-  @rtype: trajectory_msgs/JointTrajectory
-  @return: The equivalent ROS JointTrajectory message
-  """
-  ros_traj = JointTrajectory()
-  # Specification groups
-  spec = traj.GetConfigurationSpecification()
-  try:
-    values_group = spec.GetGroupFromName('joint_values {0}'.format(robot_name))
-  except orpy.openrave_exception:
-    orpy.RaveLogError('Corrupted trajectory. Failed to find group: joint_values')
-    return None
-  try:
-    velocities_group = spec.GetGroupFromName('joint_velocities {0}'.format(robot_name))
-  except orpy.openrave_exception:
-    orpy.RaveLogError('Corrupted trajectory. Failed to find group: joint_velocities')
-    return None
-  try:
-    deltatime_group = spec.GetGroupFromName('deltatime')
-  except orpy.openrave_exception:
-    orpy.RaveLogError('Corrupted trajectory. Failed to find group: deltatime')
-    return None
-  # Copy waypoints
-  time_from_start = 0
-  for i in range(traj.GetNumWaypoints()):
-    waypoint = traj.GetWaypoint(i).tolist()
-    deltatime = waypoint[deltatime_group.offset]
-    # OpenRAVE trajectory sometimes comes with repeated waypoints. DO NOT append them
-    if np.isclose(deltatime, 0) and i > 0:
-      continue
-    # Append waypoint
-    ros_point = JointTrajectoryPoint()
-    ros_point.positions = waypoint[values_group.offset:values_group.offset+values_group.dof]
-    ros_point.velocities = waypoint[velocities_group.offset:velocities_group.offset+velocities_group.dof]
-    #print "velocities are: ", ros_point.velocities
-    time_from_start += deltatime
-    ros_point.time_from_start = rospy.Duration(time_from_start)
-    ros_traj.points.append(ros_point)
-    ros_traj.joint_names = ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"]
-  return ros_traj
+	"""
+	Converts an OpenRAVE trajectory into a ROS JointTrajectory message.
+	@type  robot_name: str
+	@param robot_name: The robot name
+	@type  traj: orpy.Trajectory
+	@param traj: The input OpenRAVE trajectory
+	@rtype: trajectory_msgs/JointTrajectory
+	@return: The equivalent ROS JointTrajectory message
+	"""
+	ros_traj = JointTrajectory()
+	# Specification groups
+	spec = traj.GetConfigurationSpecification()
+	try:
+		values_group = spec.GetGroupFromName('joint_values {0}'.format(robot_name))
+	except orpy.openrave_exception:
+		orpy.RaveLogError('Corrupted trajectory. Failed to find group: joint_values')
+		return None
+	try:
+		velocities_group = spec.GetGroupFromName('joint_velocities {0}'.format(robot_name))
+	except orpy.openrave_exception:
+		orpy.RaveLogError('Corrupted trajectory. Failed to find group: joint_velocities')
+		return None
+	try:
+		deltatime_group = spec.GetGroupFromName('deltatime')
+	except orpy.openrave_exception:
+		orpy.RaveLogError('Corrupted trajectory. Failed to find group: deltatime')
+		return None
+	# Copy waypoints
+	time_from_start = 0
+	for i in range(traj.GetNumWaypoints()):
+		waypoint = traj.GetWaypoint(i).tolist()
+		deltatime = waypoint[deltatime_group.offset]
+		# OpenRAVE trajectory sometimes comes with repeated waypoints. DO NOT append them
+		if np.isclose(deltatime, 0) and i > 0:
+			continue
+		# Append waypoint
+		ros_point = JointTrajectoryPoint()
+		ros_point.positions = waypoint[values_group.offset:values_group.offset+values_group.dof]
+		ros_point.velocities = waypoint[velocities_group.offset:velocities_group.offset+velocities_group.dof]
+		#print "velocities are: ", ros_point.velocities
+		time_from_start += deltatime
+		ros_point.time_from_start = rospy.Duration(time_from_start)
+		ros_traj.points.append(ros_point)
+		ros_traj.joint_names = ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"]
+	return ros_traj
+
 
 def build_rotation(axis, angle):
-    rotation = None
-    if axis == 'x':
-        rotation = np.matrix([[1, 0, 0, 0],
+	rotation = None
+	if axis == 'x':
+		rotation = np.matrix([[1, 0, 0, 0],
                              [0, math.cos(-angle), math.sin(-angle), 0],
                              [0, -math.sin(-angle), math.cos(-angle), 0],
                              [0, 0, 0, 1]])
-    if axis == 'y':
-        rotation = np.matrix(
+	if axis == 'y':
+		rotation = np.matrix(
             [[math.cos(-angle), 0, -math.sin(-angle), 0],
              [0, 1, 0, 0],
              [math.sin(-angle), 0, math.cos(-angle), 0],
              [0, 0, 0, 1]]
         )
-    if axis == 'z':
-        rotation = np.matrix(
+	if axis == 'z':
+		rotation = np.matrix(
             [[math.cos(-angle), math.sin(-angle), 0, 0],
              [-math.sin(-angle), math.cos(-angle), 0, 0],
              [0, 0, 1, 0],
              [0, 0, 0, 1]]
         )
-    return rotation
+	return rotation
 
 # input: 4by4 rotational matrix needed to be rotated, rotational angles about x, y, and z axes
 # output: the rotated 4by4 rotational matrix
 def build_relative_rotation(original, x_rot, y_rot, z_rot):
-    rotatex = build_rotation('x', x_rot)
-    rotatey = build_rotation('y', y_rot)
-    rotatez = build_rotation('z', z_rot)
-    # apply the rotations here
-    return original.dot(rotatex).dot(rotatey).dot(rotatez)
+	rotatex = build_rotation('x', x_rot)
+	rotatey = build_rotation('y', y_rot)
+	rotatez = build_rotation('z', z_rot)
+	# apply the rotations here
+	return original.dot(rotatex).dot(rotatey).dot(rotatez)
 
-def sortTime(path):
-    return path.points[-1].time_from_start
+
+def sort_time(path):
+	return path.points[-1].time_from_start
+
 
 class PickPlace(object):
 
@@ -152,7 +156,7 @@ class PickPlace(object):
 		ikmodel = orpy.databases.inversekinematics.InverseKinematicsModel(self.robot, iktype=orpy.IkParameterization.Type.Transform6D)
 		if not ikmodel.load():
 			print "ik model loading failed"
-  			ikmodel.autogenerate()
+			ikmodel.autogenerate()
 			print "auto generating ik model"
 		#Tgrasp = tr.quaternion_matrix([ 0.5,  0.5,  0.5, -0.5])
 		Tgrasp = tr.quaternion_matrix([ 0.0, 1.0, 0.0, 0.0])
@@ -179,12 +183,12 @@ class PickPlace(object):
 		J = np.zeros((6,6))
 		q = self.robot.GetActiveDOFValues()
 		for i in range(10):
-  			J[:3,:] = self.robot.ComputeJacobianTranslation(link_idx, link_origin)[:,:6]
-  			J[3:,:] = self.robot.ComputeJacobianAxisAngle(link_idx)[:,:6]
-  			qdot = np.linalg.solve(J, twist)
-  			q[:6] += qdot
-  			self.robot.SetActiveDOFValues(q)
-  			raw_input('Press Enter for next differential IK step')
+			J[:3,:] = self.robot.ComputeJacobianTranslation(link_idx, link_origin)[:,:6]
+			J[3:,:] = self.robot.ComputeJacobianAxisAngle(link_idx)[:,:6]
+			qdot = np.linalg.solve(J, twist)
+			q[:6] += qdot
+			self.robot.SetActiveDOFValues(q)
+			raw_input('Press Enter for next differential IK step')
 
 	def callback(self, data):
 		if len(self.initConfig) == 0 or (data.position != self.initConfig):
@@ -203,7 +207,7 @@ class PickPlace(object):
 			r.sleep()
 		sub_once.unregister()
 
-	def motion_plan(self, targetConfig = []):
+	def motion_plan(self, target_config = []):
 		planner = orpy.RaveCreatePlanner(self.env, 'birrt')
 		params = orpy.Planner.PlannerParameters()
 		params.SetRobotActiveJoints(self.robot)
@@ -212,10 +216,10 @@ class PickPlace(object):
 		self.robot.SetActiveDOFValues(self.initConfig)
 		self.initConfig = []
 
-		if len(targetConfig)>0:
+		if len(target_config)>0:
 			print "going home"
-			print targetConfig
-			params.SetGoalConfig(targetConfig)
+			print target_config
+			params.SetGoalConfig(target_config)
 		else:
 			choose = raw_input("Enter 1 to execute the shortest path, and 2 to customize path selection")
 			if choose == "1":
@@ -243,7 +247,7 @@ class PickPlace(object):
 		qvect = np.zeros((len(times), self.robot.GetActiveDOF()))
 		spec = traj.GetConfigurationSpecification()
 		for i in range(len(times)):
-  			trajdata = traj.Sample(times[i])
+			trajdata = traj.Sample(times[i])
 			qvect[i,:] = spec.ExtractJointValues(trajdata, self.robot, self.manipulator.GetArmIndices(), 0)
 		print qvect
 		ros_traj = ros_trajectory_from_openrave(self.robot.GetName(), traj)
@@ -276,13 +280,13 @@ class PickPlace(object):
 			controller.SetPath(traj)
 
 		# sort all the feasible paths according to their durations
-		candidate_traj.sort(key=sortTime)
+		candidate_traj.sort(key=sort_time)
 		self.optimalPath = candidate_traj[0]
 
 	def planning_execution(self, targetConfig = []):
 		res_traj = self.motion_plan(targetConfig)
 		raw_input("Press enter to move the robot! Be careful!")
-        	goal = FollowJointTrajectoryGoal()
+		goal = FollowJointTrajectoryGoal()
 		goal.trajectory = res_traj
 		goal.trajectory.header.stamp = rospy.Time.now()
 		client.send_goal(goal)
@@ -291,8 +295,8 @@ class PickPlace(object):
 if __name__ == "__main__":
 	print "running openrave in ros"
 	rospy.init_node("openrave_planning_client")
-        client = actionlib.SimpleActionClient('/joint_trajectory_action', FollowJointTrajectoryAction)
-        client.wait_for_server()
+	client = actionlib.SimpleActionClient('/joint_trajectory_action', FollowJointTrajectoryAction)
+	client.wait_for_server()
 	print "the jointTrajectoryAction server is connected"
 	scene = PickPlace()
 	scene.set_env()
