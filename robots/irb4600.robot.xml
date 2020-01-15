@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Robot name="irb4600_robotiq_85_gripper">
+  
+  <!-- Include the robots -->
+  <Robot file="irb4600.dae"></Robot>
+  
+  <!-- Attach the gripper to the robot -->
+  <Kinbody>
+    <body name="robotiq_coupler">
+      <offsetfrom>link_6</offsetfrom>
+    </body>
+    <joint name="joint_irb4600_robotiq" type="hinge" enable="false">
+      <body>link_6</body>
+      <body>robotiq_coupler</body>
+      <limits>0 0</limits>
+    </joint>
+  </Kinbody>
+  
+  <!-- Define the manipulator -->
+  <Manipulator name="gripper">
+    <base>base_link</base>
+    <effector>tool0</effector>
+    <!--translation>0 0 0.144</translation-->
+    <translation>0 0 0</translation>
+    <joints>joint_6-tool0</joints>
+    <closingdirection>1 1 1 0</closingdirection>
+    <direction>0 1 0</direction>
+  </Manipulator>
+  
+  <!-- This one if for backwards compatibility -->
+  <Manipulator name="irb4600_robotiq_85_gripper">
+    <base>base_link</base>
+    <effector>tool0</effector>
+    <!--translation>0 0 0.144</translation-->
+    <translation>0 0 0.0</translation>
+    <joints>joint_6-tool0</joints>
+    <closingdirection>1 1 1 0</closingdirection>
+    <direction>0 1 0</direction>
+  </Manipulator>
+</Robot>

@@ -43,6 +43,7 @@ class MotionPlan(object):
     this function loads an environment and add the defined environment in the planning_env function
     '''
     def set_env(self):
+        #self.env.Load('../worlds/boxes_irb4600_task.env.xml')
         self.env.Load('../worlds/boxes_irb1200_task.env.xml')
         self.env.AddKinBody(self.planning_env())
         self.robot = self.env.GetRobot('robot')
@@ -129,6 +130,7 @@ class MotionPlan(object):
             params.SetInitialConfig(self.init_config)
             params.SetGoalConfig(goal_config)
             params.SetPostProcessing('ParabolicSmoother', '<_nmaxiterations>40</_nmaxiterations>')
+            #params.SetPostProcessing('shortcut_linear', '<_nmaxiterations>40</_nmaxiterations>')
             planner.InitPlan(self.robot, params)
             traj = orpy.RaveCreateTrajectory(self.env, '')
             planner.PlanPath(traj)

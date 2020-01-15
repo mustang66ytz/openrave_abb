@@ -94,7 +94,7 @@ find_package(catkin REQUIRED COMPONENTS
 #   cfg/DynReconf1.cfg
 #   cfg/DynReconf2.cfg
 # )
-catkin_python_setup()
+#catkin_python_setup()
 
 ###################################
 ## catkin specific configuration ##
