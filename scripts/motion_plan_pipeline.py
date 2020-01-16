@@ -122,6 +122,7 @@ class MotionPlan(object):
         result = []
         path_list = []
         ros_traj_list = []
+        sum_plan_time = 0
 
         for goal_config in goal_config_list:
             planner = orpy.RaveCreatePlanner(self.env, 'birrt')
@@ -133,11 +134,16 @@ class MotionPlan(object):
             #params.SetPostProcessing('shortcut_linear', '<_nmaxiterations>40</_nmaxiterations>')
             planner.InitPlan(self.robot, params)
             traj = orpy.RaveCreateTrajectory(self.env, '')
+            curr_start_time = time.time()
             planner.PlanPath(traj)
+            curr_end_time = time.time()
+            sum_plan_time = sum_plan_time + curr_end_time - curr_start_time
             ros_traj = test_irb1200_model.ros_trajectory_from_openrave(self.robot.GetName(), traj)
             print "duration of the path is: ", ros_traj.points[-1].time_from_start
             path_list.append(traj)
             ros_traj_list.append(ros_traj)
+        average_plan_time = sum_plan_time/len(goal_config_list)
+        print "average motion planning time is: ", average_plan_time
         result.append(path_list)
         result.append(ros_traj_list)
         return result
@@ -190,7 +196,10 @@ if __name__ == "__main__":
     # setup the environment
     motion_planner.set_env()
     # calculate the goal ik
+    ik_start_time = time.time()
     goal_config_list = motion_planner.ik_calculation([0.6, 0, 0.9, 0.0, 1.0, 0.0, 0.0])
+    ik_end_time = time.time()
+    print "ik took ", ik_end_time-ik_start_time, " to caculate!"
     # define initial pose and goal pose
     motion_planner.get_current_joint_states()
     motion_planner.init_poses(motion_planner.curstate, [0.6, 0, 0.9, 0.0, 1.0, 0.0, 0.0])
