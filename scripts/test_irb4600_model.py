@@ -29,8 +29,20 @@ if __name__ == "__main__":
     solutions = manipulator.FindIKSolutions(target1, orpy.IkFilterOptions.CheckEnvCollisions)
     print solutions
 
+    planner = orpy.RaveCreatePlanner(env, 'birrt')  # Using bidirectional RRT
+    params = orpy.Planner.PlannerParameters()
+    params.SetRobotActiveJoints(robot)
+    params.SetGoalConfig(solutions[0])
+    params.SetPostProcessing('ParabolicSmoother', '<_nmaxiterations>10</_nmaxiterations>')
+    planner.InitPlan(robot, params)
+    # Plan a trajectory
+    traj = orpy.RaveCreateTrajectory(env, '')
+    planner.PlanPath(traj)
+    # Execute the trajectory
+    controller = robot.GetController()
+    controller.SetPath(traj)
     # set the poses
-    robot.SetActiveDOFValues(solutions[0])
+    #robot.SetActiveDOFValues(solutions[0])
 
     link_idx = [l.GetName() for l in robot.GetLinks()].index('tool0')
     link_origin = robot.GetLink('tool0').GetTransform()[:3, 3]
